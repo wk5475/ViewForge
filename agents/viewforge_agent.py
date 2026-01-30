@@ -48,7 +48,6 @@ class ViewForgeAgent:
             input_text, search_results
         )
 
-
         logger.info("✅ Agent运行完成")
         return final_response
 
@@ -106,8 +105,8 @@ class ViewForgeAgent:
             context = "搜索结果：\n"
             for i, result in enumerate(search_results, 1):
                 context += f"{i}. 标题：{result['title']}\n"
-                context += f"   链接：{result['url']}\n"
-                context += f"   内容：{result['content'][:200]}...\n\n"
+                context += f"链接：{result['url']}\n"
+                context += f"内容：{result['content'][:200]}...\n\n"
 
         messages = [
             {
@@ -122,7 +121,7 @@ class ViewForgeAgent:
             },
             {
                 "role": "user",
-                "content": f"用户输入：{input_text}\n\n{context}"
+                "content": f"用户输入:{input_text}。检索的内容:{context}"
             }
         ]
 

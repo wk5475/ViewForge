@@ -16,7 +16,7 @@ def main():
     logger.info("📝 请输入您的问题或需求：")
     
     # 接收用户输入
-    user_input = input("用户: ")
+    user_input = input()
     
     if not user_input:
         logger.error("❌ 输入为空，请重新运行程序并输入内容")
