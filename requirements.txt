@@ -1,0 +1,31 @@
+# 核心依赖
+requests==2.31.0
+python-dotenv==1.0.0
+
+# 用于网页解析
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# 用于文本处理
+nltk==3.8.1
+spaCy==3.7.4
+
+# 用于图像处理
+Pillow==10.2.0
+
+# 用于Markdown处理
+markdown==3.5.2
+
+# LangGraph相关依赖
+langgraph==0.3.14
+langchain==0.3.7
+langchain-core==0.3.22
+langchain-community==0.3.6
+
+# 搜索工具相关依赖
+tavily-python==0.5.1
+
+# 可选依赖（用于开发和测试）
+pytest==7.4.4
+black==23.12.1
+flake8==6.1.0
