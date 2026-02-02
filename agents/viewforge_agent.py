@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 from core.llm import LLM
 from core.config import get_config
 from tools.search_tools import get_search_tool
+from tools.img_generate_tools import
 from utils.log import Log
 
 logger = Log()
@@ -31,113 +32,79 @@ class ViewForgeAgent:
         self.search_tool = get_search_tool()
 
 
-    def run(self, input_text: str) -> str:
+    def run(self, input_text: str, context_type:str) -> str:
         """运行Agent处理用户输入"""
         logger.info(f"🚀 启动 {self.name}，处理用户输入...")
 
-        # 步骤1：分析用户输入，判断是否需要搜索
-        needs_search, search_query = self._analyze_input_needs_search(input_text)
+        try:
+            # 1. 搜索相关内容
+            search_results = self._search_content(input_text)
+            logger.info(f"✅ 搜索完成，找到 {len(search_results)} 个相关结果")
 
-        # 步骤2：执行搜索（如果需要）
-        search_results = []
-        if needs_search and search_query:
-            search_results = self._execute_search(search_query)
+            # 2. 生成爆文
+            article_content = self._generate_article(input_text, context_type, search_results)
+            logger.info("✅ 爆文生成完成")
 
-        # 步骤3：生成响应，判断是否需要插图
-        final_response, needs_illustration = self._generate_response(
-            input_text, search_results
-        )
+            # 3. 生成配图
+            image_url = self._generate_image(input_text, context_type)
+            logger.info(f"✅ 配图生成完成：{image_url}")
 
-        logger.info("✅ Agent运行完成")
-        return final_response
+            # 4. 格式化为markdown
+            markdown_output = ""
+            # markdown_output = self._format_to_markdown(article_content, image_url, search_results)
+            # logger.info("✅ Markdown格式转换完成")
+
+            logger.info("✅ Agent运行完成")
+            return markdown_output
+        except Exception as e:
+            logger.error(f"❌ Agent运行失败: {e}")
+            return f"生成失败: {str(e)}"
 
 
-    def _analyze_input_needs_search(self, input_text: str):
-        """分析用户输入是否需要搜索"""
-        logger.info("🧠 分析用户输入是否需要搜索...")
+    def _search_content(self, content: str) -> str:
+        """搜索相关内容"""
+        return self.search_tool.search(content)
 
+    def _generate_article(self, content: str, domain: str, search_results: str) -> str:
+        """生成爆文"""
+        
+        # 构建prompt
         messages = [
             {
                 "role": "system",
-                "content": "你是一个智能助手，需要分析用户的输入是否需要使用搜索工具获取信息。\n"
-                           "请根据以下标准判断：\n"
-                           "1. 如果用户的问题涉及事实性信息、当前事件、具体数据或需要最新信息，请返回需要搜索\n"
-                           "2. 如果用户的问题是关于创意写作、个人建议、一般性知识或不需要实时信息的，请返回不需要搜索\n"
-                           "\n"
-                           "请以JSON格式返回你的判断结果：\n"
-                           "{\"needs_search\": true/false, \"search_query\": \"搜索查询词\"}\n"
-                           "其中search_query是根据用户输入生成的合适搜索词，如果不需要搜索则为空字符串"
+                "content": "你是一名专业的头条爆文撰写专家，擅长撰写吸引人的标题和内容。请根据提供的主题和相关信息，生成一篇符合头条风格的爆文。"
             },
             {
                 "role": "user",
-                "content": input_text
+                "content": f"请根据以下主题和相关信息，生成一篇头条爆文："
+                           f"主题：{content} 领域：{domain} 相关信息：{search_results}"
+                           f"要求："
+                           f"1. 标题要吸引人，使用感叹号或问号等标点增强语气"
+                           f"2. 内容要生动有趣，符合头条风格"
+                           f"3. 结构清晰，有开头、中间和结尾"
+                           f"4. 结合最新信息，突出热点"
+                           f"5. 语言简洁明了，避免使用复杂词汇"
+                           f"6. 字数控制在800-1200字之间"
             }
         ]
+        
+        return self.llm.think(messages, temperature=0.7)
 
-        response = self.llm.think(messages)
+    def _generate_image(self, content: str, domain: str) -> str:
+        """生成配图"""
+        self.run
+        return 1
 
-        try:
-            analysis_result = json.loads(response)
-            needs_search = analysis_result.get("needs_search", False)
-            search_query = analysis_result.get("search_query", "")
-        except:
-            logger.error("❌ 解析LLM响应失败，默认不需要搜索")
-            needs_search = False
-            search_query = ""
-
-        logger.info(f"✅ 分析结果：需要搜索={needs_search}")
-        return needs_search, search_query
-
-
-    def _execute_search(self, search_query: str, max_results: int = 5) -> List[Dict]:
-        """执行搜索"""
-        logger.info(f"🔍 执行搜索：{search_query}")
-        return self.search_tool.search(search_query, max_results)
-
-
-    def _generate_response(self, input_text: str, search_results: List[Dict]):
-        """生成响应，判断是否需要插图"""
-        logger.info("📝 生成响应...")
-
-        # 构建上下文
-        context = ""
-        if search_results:
-            context = "搜索结果：\n"
-            for i, result in enumerate(search_results, 1):
-                context += f"{i}. 标题：{result['title']}\n"
-                context += f"链接：{result['url']}\n"
-                context += f"内容：{result['content'][:200]}...\n\n"
-
-        messages = [
-            {
-                "role": "system",
-                "content": "你是一个智能助手，需要根据用户输入和可能的搜索结果生成最终响应。\n"
-                           "请遵循以下要求：\n"
-                           "1. 如果有搜索结果，请结合搜索结果提供准确的信息\n"
-                           "2. 保持回答的风格与用户输入的风格一致\n"
-                           "3. 判断回答是否需要插图（例如：需要展示数据、场景描述、人物形象等）\n"
-                           "4. 请以JSON格式返回你的回答和判断结果：\n"
-                           "{\"response\": \"你的回答\", \"needs_illustration\": true/false}\""
-            },
-            {
-                "role": "user",
-                "content": f"用户输入:{input_text}。检索的内容:{context}"
-            }
-        ]
-
-        response = self.llm.think(messages)
-
-        try:
-            result = json.loads(response)
-            final_response = result.get("response", "")
-            needs_illustration = result.get("needs_illustration", False)
-        except:
-            logger.error("❌ 解析LLM响应失败")
-            final_response = response or ""
-            needs_illustration = False
-
-        logger.info(f"✅ 响应生成完成，需要插图={needs_illustration}")
-        return final_response, needs_illustration
+    # def _format_to_markdown(self, article_content: str, image_url: str, search_results: list) -> str:
+    #     """格式化为markdown"""
+    #     markdown = f"# {article_content.split('\n')[0]}\n\n"
+    #     markdown += f"![配图]({image_url})\n\n"
+    #     markdown += "\n".join(article_content.split('\n')[1:]) + "\n\n"
+    #     markdown += "## 参考资料\n"
+    #     for i, result in enumerate(search_results, 1):
+    #         markdown += f"{i}. [{result['title']}]({result['url']})\n"
+    #
+    #     return markdown
 
 
 # 全局Agent实例
@@ -147,3 +114,11 @@ viewforge_agent = ViewForgeAgent("ViewForge Agent")
 def get_agent() -> ViewForgeAgent:
     """获取ViewForge Agent实例"""
     return viewforge_agent
+
+if __name__ == "__main__":
+    # 测试Agent运行
+    agent = get_agent()
+    test_input = "如何在2026年打造爆款头条文章？"
+    result = agent.run(test_input, context_type="news")
+    print("=== Agent运行测试结果 ===")
+    print(result)

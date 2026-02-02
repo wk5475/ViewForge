@@ -18,49 +18,76 @@ class SearchTool:
     def __init__(self):
         self.config = get_config()
         self.tavily_api_key = self.config.tavily_api_keys
-        
-    def search(self, query: str, max_results: int = 5) -> List[Dict]:
-        """执行搜索
-        
-        Args:
-            query: 搜索查询字符串
-            max_results: 返回的最大结果数
-            
-        Returns:
-            搜索结果列表，每个结果包含标题、链接和摘要
-        """
-        if not self.tavily_api_key:
-            logger.error("❌ 未配置Tavily API密钥")
-            return []
-        
+        self.serpapi_key = self.config.serpapi_keys
+        self.max_results = 3
+
+    def search(self, query: str):
+        """执行智能搜索"""
+
         try:
-            import tavily
-            
-            client = tavily.TavilyClient(api_key=self.tavily_api_key)
-            results = client.search(
-                query=query,
-                max_results=max_results,
-                include_answer=True,
-                include_raw_content=False,
-                include_images=False
-            )
-            
-            logger.info(f"✅ 搜索完成，找到 {len(results.results)} 个结果")
-            
-            # 格式化结果
-            formatted_results = []
-            for result in results.results:
-                formatted_results.append({
-                    "title": result.get("title", ""),
-                    "url": result.get("url", ""),
-                    "content": result.get("content", "")
-                })
-            
-            return formatted_results
-            
+            if not query.strip():
+                logger.error(f"搜索查询为空，无法执行搜索。")
+
+            if not any([self.tavily_api_key, self.serpapi_key]):
+                logger.error("⚠️ 未配置任何搜索引擎API Key，无法执行搜索。")
+
+            if self.tavily_api_key:
+                result = self._search_with_tavily(query)
+                if result and "未找到" not in result:
+                    return result
+
+            elif self.serpapi_key:
+                result = self._search_with_serpapi(query)
+                if result and "未找到" not in result:
+                    return result
+
         except Exception as e:
             logger.error(f"❌ 搜索时发生错误: {e}")
-            return []
+            return ""
+
+
+    def _search_with_tavily(self, query: str) -> str:
+        """使用Tavily搜索"""
+        from tavily import TavilyClient
+
+        tavily_client = TavilyClient(self.tavily_api_key)
+        response = tavily_client.search(
+            query=query,
+            max_results=self.max_results
+            )
+
+        if response.get('answer'):
+            result = f"AI直接答案:{response['answer']}\n\n"
+        else:
+            result = ""
+
+        result += "相关结果:\n"
+        for i, item in enumerate(response.get('results', [])[:3], 1):
+            result += f"[{i}] {item.get('title', '')}\n"
+            result += f"{item.get('content', '')[:150]}...\n\n"
+
+        return result
+
+    def _search_with_serpapi(self, query: str) -> str:
+        """使用SerpApi搜索"""
+        import serpapi
+
+        search = serpapi.search(
+            q=query,
+            engine="google",
+            api_key=self.serpapi_key,
+            num=self.max_results
+        )
+
+        results = search.as_dict()
+
+        result = "Google搜索结果:\n"
+        if "organic_results" in results:
+            for i, res in enumerate(results["organic_results"][:3], 1):
+                result += f"[{i}] {res.get('title', '')}\n"
+                result += f"    {res.get('snippet', '')}\n\n"
+
+        return result
 
 # 全局搜索工具实例
 search_tool = SearchTool()

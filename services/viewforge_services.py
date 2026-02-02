@@ -28,6 +28,6 @@ def call_viewforge_api(user_text: str, style = None, context_type = None, platfo
     agent = get_agent()
     
     # 运行Agent
-    result = agent.run(user_text)
+    result = agent.run(user_text, context_type)
 
     return result
