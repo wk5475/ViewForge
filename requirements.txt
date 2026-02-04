@@ -1,6 +1,8 @@
 # 核心依赖
 requests==2.31.0
 python-dotenv==1.0.0
+openai==1.35.10
+concurrent-log-handler==0.9.24
 
 # 用于网页解析
 beautifulsoup4==4.12.3
@@ -24,6 +26,10 @@ langchain-community==0.3.6
 
 # 搜索工具相关依赖
 tavily-python==0.5.1
+
+# Web框架依赖
+fastapi==0.109.2
+uvicorn==0.25.0
 
 # 可选依赖（用于开发和测试）
 pytest==7.4.4

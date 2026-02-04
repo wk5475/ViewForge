@@ -25,6 +25,11 @@ class Config:
     tavily_api_keys: str = None  # Tavily API Keys
     serpapi_keys: str = None  # SerpAPI Keys
 
+    # === FastAPI 配置 ===
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    api_reload: bool = True
+
     # 单例实例存储
     _instance: Optional["Config"] = None
 
@@ -59,7 +64,7 @@ class Config:
             openai_model=os.getenv("OPENAI_MODEL"),
             # 搜索引擎 API Keys
             tavily_api_keys = os.getenv("TAVILY_API_KEYS"),
-            serpapi_keys = os.getenv("SERPAPI_API_KEYS"),
+            serpapi_keys = os.getenv("SERPAPI_API_KEYS")
         )
 
 

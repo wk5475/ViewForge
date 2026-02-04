@@ -13,7 +13,6 @@ from pathlib import Path
 from core.llm import LLM
 from core.config import get_config
 from tools.search_tools import get_search_tool
-from tools.img_generate_tools import get_img_tools
 from utils.log import Log
 
 
@@ -35,7 +34,6 @@ class ViewForgeAgent:
         )
 
         self.search_tool = get_search_tool()
-        self.img_tools = get_img_tools()
 
         self.article_dir = os.path.join(root_path, output_dir)
         os.makedirs(self.article_dir, exist_ok=True)
@@ -48,24 +46,17 @@ class ViewForgeAgent:
         try:
             # 1. 搜索相关内容
             search_results = self._search_content(input_text)
-            logger.info(f"✅ 搜索完成，找到 {len(search_results)} 个相关结果")
 
             # 2. 生成爆文
             article_content = self._generate_article(input_text, context_type, search_results)
-            logger.info("✅ 爆文生成完成")
 
-            # # 3. 生成配图
-            # image_url = self._generate_image(input_text, context_type)
-            # logger.info(f"✅ 配图生成完成：{image_url}")
-            image_url = "https://example.com/default_image.jpg"  # 使用默认图片URL
 
-            # 4. 格式化为markdown
-            markdown_output = self._format_to_markdown(article_content, image_url, search_results)
-            logger.info("✅ Markdown格式转换完成")
+            # 5. 格式化为markdown
+            markdown_output = self._format_to_markdown(article_content, search_results)
 
-            # 5. 保存文章
-            save_path = self._save_article(markdown_output)
-            logger.info(f"✅ 文章保存完成：{save_path}")
+
+            # 6. 保存文章
+            self._save_article(markdown_output)
 
             logger.info("✅ Agent运行完成")
             return markdown_output
@@ -75,52 +66,61 @@ class ViewForgeAgent:
 
 
     def _search_content(self, content: str) -> str:
-        """搜索相关内容"""
-        return self.search_tool.search(content)
+        """搜索相关内容，确保获取最新资讯"""
+        logger.info(f"🔍 搜索最新资讯：{content}")
+        
+        # 优化搜索查询，添加时间限制
+        optimized_query = f"{content} 最新 最近"
+        
+        # 执行搜索
+        search_results = self.search_tool.search(optimized_query)
+
+        logger.info(f"✅ 搜索完成，获取到最新资讯")
+        return search_results
+
 
     def _generate_article(self, content: str, domain: str, search_results: str) -> str:
-        """生成爆文"""
+        """生成爆文，确保符合头条风格"""
+        logger.info(f"📝 生成头条风格文章：{content}")
         
-        # 构建prompt
+        # 构建prompt，增强头条风格
         messages = [
             {
                 "role": "system",
-                "content": "你是一名专业的头条爆文撰写专家，擅长撰写吸引人的标题和内容。请根据提供的主题和相关信息，生成一篇符合头条风格的爆文。"
+                "content": "你是一名顶尖的头条爆文撰写专家，精通头条平台的内容创作规律。你的文章以标题吸引人、内容有深度、结构清晰、语言生动著称，能够快速获得高阅读量和互动率。"
             },
             {
                 "role": "user",
-                "content": f"请根据以下主题和相关信息，生成一篇头条爆文："
-                           f"主题：{content} 领域：{domain} 相关信息：{search_results}"
-                           f"要求："
-                           f"1. 标题要吸引人，使用感叹号或问号等标点增强语气"
-                           f"2. 内容要生动有趣，符合头条风格"
-                           f"3. 结构清晰，有开头、中间和结尾"
-                           f"4. 结合最新信息，突出热点"
-                           f"5. 语言简洁明了，避免使用复杂词汇"
-                           f"6. 字数控制在800-1200字之间"
+                "content": f"请根据以下主题和相关信息，生成一篇符合头条风格的爆文：\n"
+                           f"主题：{content}\n"
+                           f"领域：{domain}\n"
+                           f"相关最新信息：{search_results}\n"
+                           f"\n"
+                           f"严格按照以下要求创作：\n"
+                           f"1. 标题：必须引人注目，使用感叹号或问号等标点增强语气，长度控制在15-25字之间\n"
+                           f"2. 开头：第一段必须抓住读者眼球，用生动的场景或问题引入主题\n"
+                           f"3. 内容：\n"
+                           f"   - 结构清晰，分为多个段落，每段不宜过长\n"
+                           f"   - 结合最新信息，突出热点话题\n"
+                           f"   - 语言口语化，避免使用复杂词汇\n"
+                           f"   - 加入适当的情感表达，增强文章感染力\n"
+                           f"   - 提供有价值的信息和见解\n"
+                           f"4. 结尾：总结全文，给出明确的观点或建议，鼓励读者评论互动\n"
+                           f"5. 字数：控制在800-1200字之间\n"
+                           f"6. 风格：符合头条平台的内容风格，接地气、有温度、有态度\n"
+                           f"\n"
+                           f"请直接输出完整文章，不要有任何引言或开场白。"
             }
         ]
         
-        return self.llm.think(messages, temperature=0.7)
+        article = self.llm.think(messages, temperature=0.7)
+        logger.info("✅ 文章生成完成，符合头条风格")
+        return article
 
-    def _generate_image(self, content: str, domain: str) -> str:
-        """生成配图"""
-        return self.img_tools.run(content, domain)
-
-    def _format_to_markdown(self, article_content: str, image_path: str, search_results: str) -> str:
+    def _format_to_markdown(self, article_content: str, search_results: str) -> str:
         """格式化为markdown"""
         lines = article_content.split('\n')
         markdown = "# " + lines[0] + "\n\n"
-        
-        # 处理图片路径
-        if image_path.startswith('http'):
-            # 如果是 URL，直接使用
-            markdown += "![配图]('" + image_path + "')\n\n"
-        else:
-            # 如果是本地路径，调整为相对路径（相对于 articles 目录）
-            image_rel_path = "../" + image_path
-            markdown += "![配图]('" + image_rel_path + "')\n\n"
-        
         markdown += "\n".join(lines[1:]) + "\n\n"
         markdown += "## 参考资料\n"
         markdown += search_results
@@ -159,7 +159,7 @@ def get_agent() -> ViewForgeAgent:
 if __name__ == "__main__":
     # 测试Agent运行
     agent = get_agent()
-    test_input = "最近黄金走势怎么样，对未来有什么预测？"
+    test_input = "国投白银LOF修改规则的问题"
     result = agent.run(test_input, context_type="财经")
     print("=== Agent运行测试结果 ===")
     print(result)

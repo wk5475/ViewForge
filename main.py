@@ -1,29 +1,43 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time    : 2026/1/30 10:46
+# @Time    : 2026/2/4 10:30
 # @Author  : wang ke
 # @File    : main.py
 # @Software: PyCharm
 
-from services.viewforge_services import call_viewforge_api
+from fastapi import FastAPI
+
+from routers import generate_article
 from utils.log import Log
 
 logger = Log()
 
-def main():
-    """主函数入口"""
+# 创建FastAPI应用
+app = FastAPI(
+    title="ViewForge API",
+    description="用于生成爆文的API服务",
+    version="1.0.0"
+)
 
-    logger.info("📝 请输入您的问题或需求：")
-    
-    # 接收用户输入
-    user_input = input()
-    
-    if not user_input:
-        logger.error("❌ 输入为空，请重新运行程序并输入内容")
-        return
-    
-    # 调用API处理输入
-    call_viewforge_api(user_text=user_input)
+app.include_router(generate_article.router)
+
+@app.get("/")
+async def root():
+    """
+    根路径
+    """
+    return {"message": "Welcome to ViewForge API"}
+
 
 if __name__ == "__main__":
-    main()
+    import uvicorn
+
+    from core.config import get_config
+
+    config = get_config()
+    uvicorn.run(
+        "main:app",
+        host=config.api_host,
+        port=config.api_port,
+        reload=config.api_reload
+    )
